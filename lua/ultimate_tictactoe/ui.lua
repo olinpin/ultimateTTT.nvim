@@ -64,7 +64,12 @@ function M.render_small_board(board, meta_state)
       elseif cell == "O" then
         line = line .. " O"
       else
-        line = line .. " ?"
+        -- Use | for middle cell, - for others
+        if i == 1 and j == 1 then
+          line = line .. " |"
+        else
+          line = line .. " -"
+        end
       end
     end
     table.insert(lines, line)
@@ -81,7 +86,7 @@ function M.render(bufnr, game_state, network_state)
   local lines = {}
 
   -- Title and player indicator
-  local title = "???????????????????????????????????????????????????????????????"
+  local title = "==============================================================="
   local game_title = "                    ULTIMATE TIC-TAC-TOE                    "
   table.insert(lines, title)
   table.insert(lines, game_title)
@@ -126,7 +131,7 @@ function M.render(bufnr, game_state, network_state)
 
   -- Render the game board
   -- Top border
-  table.insert(lines, "???????????????????????????????")
+  table.insert(lines, "+----------+----------+----------+")
 
   -- Render each meta row
   for meta_row = 0, 2 do
@@ -145,18 +150,18 @@ function M.render(bufnr, game_state, network_state)
 
     -- Combine small boards horizontally
     for i = 1, 3 do
-      local line = "? " .. board_lines[i][1] .. " ? " .. board_lines[i][2] .. " ? " .. board_lines[i][3] .. " ?"
+      local line = "|  " .. board_lines[i][1] .. " |  " .. board_lines[i][2] .. " |  " .. board_lines[i][3] .. " |"
       table.insert(lines, line)
     end
 
     -- Add separator between meta rows
     if meta_row < 2 then
-      table.insert(lines, "???????????????????????????????")
+      table.insert(lines, "+----------+----------+----------+")
     end
   end
 
   -- Bottom border
-  table.insert(lines, "???????????????????????????????")
+  table.insert(lines, "+----------+----------+----------+")
 
   table.insert(lines, "")
 
@@ -246,8 +251,8 @@ function M.apply_highlights(bufnr, game_state, network_state)
       if line_idx < #lines then
         local line = lines[line_idx + 1]
         -- Calculate column range for active board
-        local start_col = 2 + meta_col * 10
-        local end_col = start_col + 7
+        local start_col = 3 + meta_col * 11
+        local end_col = start_col + 6
 
         vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTActive", line_idx, start_col, end_col)
       end
@@ -292,24 +297,24 @@ function M.get_cell_from_cursor(line, col)
   end
 
   -- Determine meta col and cell col
-  -- Each board is 7 chars wide, with 3 chars spacing (? X ?)
-  -- Board 0: cols 2-8
-  -- Board 1: cols 12-18
-  -- Board 2: cols 22-28
+  -- Format: "|  - - - |  - - - |  - - - |"
+  -- Board 0: cols 3-9 (cells at 3, 5, 7)
+  -- Board 1: cols 14-20 (cells at 14, 16, 18)
+  -- Board 2: cols 25-31 (cells at 25, 27, 29)
 
   local meta_col, cell_col
 
-  if col >= 2 and col <= 8 then
+  if col >= 3 and col <= 9 then
     meta_col = 0
-    local rel_col = col - 2
+    local rel_col = col - 3
     cell_col = math.floor(rel_col / 2)
-  elseif col >= 12 and col <= 18 then
+  elseif col >= 14 and col <= 20 then
     meta_col = 1
-    local rel_col = col - 12
+    local rel_col = col - 14
     cell_col = math.floor(rel_col / 2)
-  elseif col >= 22 and col <= 28 then
+  elseif col >= 25 and col <= 31 then
     meta_col = 2
-    local rel_col = col - 22
+    local rel_col = col - 25
     cell_col = math.floor(rel_col / 2)
   else
     return nil
