@@ -11,6 +11,51 @@ M.current_game = nil
 M.current_buffer = nil
 M.config = {}
 
+-- Helper function to convert JSON string-keyed tables to numeric-indexed tables
+local function json_to_game_boards(json_boards)
+  local boards = {}
+  for i = 0, 2 do
+    boards[i] = {}
+    local i_key = tostring(i)
+    for j = 0, 2 do
+      boards[i][j] = {}
+      local j_key = tostring(j)
+      for k = 0, 2 do
+        boards[i][j][k] = {}
+        local k_key = tostring(k)
+        for l = 0, 2 do
+          local l_key = tostring(l)
+          -- Try both numeric and string keys
+          local val = json_boards[i] and json_boards[i][j] and json_boards[i][j][k] and json_boards[i][j][k][l]
+          if not val then
+            val = json_boards[i_key] and json_boards[i_key][j_key] and json_boards[i_key][j_key][k_key] and json_boards[i_key][j_key][k_key][l_key]
+          end
+          boards[i][j][k][l] = val
+        end
+      end
+    end
+  end
+  return boards
+end
+
+local function json_to_meta_board(json_meta)
+  local meta = {}
+  for i = 0, 2 do
+    meta[i] = {}
+    local i_key = tostring(i)
+    for j = 0, 2 do
+      local j_key = tostring(j)
+      -- Try both numeric and string keys
+      local val = json_meta[i] and json_meta[i][j]
+      if val == nil then
+        val = json_meta[i_key] and json_meta[i_key][j_key]
+      end
+      meta[i][j] = val
+    end
+  end
+  return meta
+end
+
 -- Default configuration
 local default_config = {
   default_port = 9999,
@@ -112,16 +157,23 @@ function M.handle_network_message(msg)
       vim.notify("Error applying opponent's move: " .. message, vim.log.levels.ERROR)
     end
   elseif msg.type == "game_state" then
-    -- Sync full game state - deep copy to ensure proper structure
+    -- Sync full game state - preserve local_player and is_multiplayer
     if msg.boards and msg.meta_board then
-      M.current_game.boards = msg.boards
-      M.current_game.meta_board = msg.meta_board
+      local saved_local_player = M.current_game.local_player
+      local saved_is_multiplayer = M.current_game.is_multiplayer
+      
+      -- Convert JSON tables to proper numeric-indexed tables
+      M.current_game.boards = json_to_game_boards(msg.boards)
+      M.current_game.meta_board = json_to_meta_board(msg.meta_board)
       M.current_game.current_player = msg.current_player
       M.current_game.active_board = msg.active_board
       M.current_game.game_over = msg.game_over or false
       M.current_game.winner = msg.winner
+      M.current_game.local_player = saved_local_player
+      M.current_game.is_multiplayer = saved_is_multiplayer
+      
       render_game()
-      vim.notify("Game state synchronized", vim.log.levels.INFO)
+      vim.notify("Game state synchronized! You are player " .. saved_local_player, vim.log.levels.INFO)
     else
       vim.notify("Received invalid game state!", vim.log.levels.ERROR)
     end
