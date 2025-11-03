@@ -256,7 +256,7 @@ function M.apply_highlights(bufnr, game_state, network_state)
     -- Calculate line range for active board
     -- Board starts at line 10 (0-indexed: 9)
     local start_line = 9 + meta_row * 4
-    local end_line = start_line + 3
+    local end_line = start_line + 2  -- Only 3 lines per small board (0, 1, 2)
 
     for line_idx = start_line, end_line do
       if line_idx < #lines then
