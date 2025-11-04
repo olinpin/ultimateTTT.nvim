@@ -99,17 +99,19 @@ function M.render(bufnr, game_state, network_state)
   table.insert(lines, title)
   table.insert(lines, "")
 
+  -- Always show IP info when multiplayer (whether hosting, connected, or disconnected)
+  if game_state.is_multiplayer and network_state.host_ip and network_state.host_port then
+    local ip_info = network_state.host_ip
+    local port_info = network_state.host_port
+    table.insert(lines, string.format("Connection: %s:%s", ip_info, port_info))
+  end
+  
   -- Multiplayer status and connection info
   if game_state.is_multiplayer then
     -- Check if we're hosting and waiting for a connection (direct property check)
     if network_state.is_host and network_state.server and not network_state.is_connected then
-      -- Show waiting for connection with compact IP info
+      -- Show waiting for connection
       table.insert(lines, "Mode: Multiplayer | Waiting for opponent...")
-      
-      -- Add compact connection info
-      local ip_info = network_state.host_ip or "IP not available"
-      local port_info = network_state.host_port or "9999"
-      table.insert(lines, string.format("Share with opponent: %s:%s", ip_info, port_info))
     elseif network_state.is_connected then
       local network_info = "Mode: Multiplayer | Connected"
       if network_state.is_host then
