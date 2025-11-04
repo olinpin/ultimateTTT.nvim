@@ -112,46 +112,42 @@ function M.render(bufnr, game_state, network_state)
       network_info = network_info .. " | You are: " .. game_state.local_player
     else
       if network_state.is_host and network_state.server then
-        -- Show waiting for connection with IP info
+        -- Show waiting for connection with compact IP info
         network_info = network_info .. " | Waiting for opponent..."
         table.insert(lines, network_info)
-        table.insert(lines, "")
-        table.insert(lines, "╔══════════════════════════════════════════════════════════════╗")
-        table.insert(lines, "║                     SHARE WITH OPPONENT                     ║")
-        table.insert(lines, "╠══════════════════════════════════════════════════════════════╣")
+        
+        -- Add compact connection info
         local ip_info = network_state.host_ip or "IP not available"
         local port_info = network_state.host_port or "9999"
-        table.insert(lines, string.format("║  IP: %-52s ║", ip_info))
-        table.insert(lines, string.format("║  Port: %-50s ║", port_info))
-        table.insert(lines, "╚══════════════════════════════════════════════════════════════╝")
-        table.insert(lines, "")
-        table.insert(lines, "Waiting for opponent to connect...")
-        table.insert(lines, "Press 'q' to cancel hosting")
-        
-        -- Set buffer as modifiable, update content, then set as unmodifiable
-        vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-        vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
-        return  -- Don't render the game board while waiting
+        table.insert(lines, string.format("Share with opponent: %s:%s", ip_info, port_info))
       else
         network_info = network_info .. " | Disconnected"
+        table.insert(lines, network_info)
       end
     end
-    table.insert(lines, network_info)
+    
+    if not (network_state.is_host and network_state.server and not network_state.is_connected) then
+      table.insert(lines, network_info)
+    end
   else
     table.insert(lines, "Mode: Local Game")
   end
 
   -- Turn indicator
-  local turn_msg = "Current Player: " .. game_state.current_player
-  if game_state.is_multiplayer then
-    if game_state.current_player == game_state.local_player then
-      turn_msg = turn_msg .. " (YOUR TURN!)"
-    else
-      turn_msg = turn_msg .. " (Opponent's turn)"
+  if game_state.is_multiplayer and network_state.is_host and network_state.server and not network_state.is_connected then
+    -- Waiting for opponent to connect
+    table.insert(lines, "Waiting for opponent to connect... (moves disabled)")
+  else
+    local turn_msg = "Current Player: " .. game_state.current_player
+    if game_state.is_multiplayer then
+      if game_state.current_player == game_state.local_player then
+        turn_msg = turn_msg .. " (YOUR TURN!)"
+      else
+        turn_msg = turn_msg .. " (Opponent's turn)"
+      end
     end
+    table.insert(lines, turn_msg)
   end
-  table.insert(lines, turn_msg)
 
   -- Active board indicator
   local active_msg = require("ultimate_tictactoe.game").get_active_board_message(game_state)
@@ -234,14 +230,14 @@ function M.apply_highlights(bufnr, game_state, network_state)
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-  -- Highlight title
+  -- Highlight title and connection info
   for i, line in ipairs(lines) do
     if line:match("ULTIMATE TIC%-TAC%-TOE") then
       vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTTitle", i - 1, 0, -1)
-    elseif line:match("SHARE WITH OPPONENT") then
+    elseif line:match("Share with opponent:") then
       vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTConnectionBox", i - 1, 0, -1)
-    elseif line:match("IP:") or line:match("Port:") then
-      vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTConnectionBox", i - 1, 0, -1)
+    elseif line:match("Waiting for opponent to connect%.%.%. %(moves disabled%)") then
+      vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTOpponentTurn", i - 1, 0, -1)
     end
   end
 

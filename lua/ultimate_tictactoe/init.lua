@@ -306,6 +306,12 @@ function M.make_move()
     return
   end
 
+  -- Prevent moves when hosting but opponent hasn't connected yet
+  if M.current_game.is_multiplayer and network.is_host and not network.is_connection_active() then
+    vim.notify("Waiting for opponent to connect...", vim.log.levels.INFO)
+    return
+  end
+
   -- Get cursor position
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = cursor[1]
