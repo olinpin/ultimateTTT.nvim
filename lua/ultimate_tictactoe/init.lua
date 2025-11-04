@@ -236,8 +236,6 @@ function M.host_game()
     local success, message = network.start_host(port, function()
       -- Client connected - start game
       M.current_game = game.new("X", true)
-      local bufnr = get_or_create_buffer()
-      open_game_window(bufnr)
       render_game()
 
       -- Send initial game state after a small delay to ensure client is ready
@@ -252,9 +250,13 @@ function M.host_game()
       return
     end
 
-    -- Show waiting dialog
-    local ip = network.get_local_ip()
-    ui.show_waiting_dialog(ip, port)
+    -- Create initial game state for hosting (before client connects)
+    M.current_game = game.new("X", true)
+    local bufnr = get_or_create_buffer()
+    open_game_window(bufnr)
+    
+    -- Render the waiting screen with IP info
+    render_game()
 
     -- Set up message handler
     network.set_message_callback(M.handle_network_message)

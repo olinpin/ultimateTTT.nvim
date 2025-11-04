@@ -10,6 +10,8 @@ M.is_connected = false
 M.opponent_name = nil
 M.message_buffer = ""
 M.on_message_callback = nil
+M.host_ip = nil
+M.host_port = nil
 
 -- Start hosting a game
 -- @param port number: port to listen on (default 9999)
@@ -57,6 +59,8 @@ function M.start_host(port, on_connect)
   end)
 
   M.server = server
+  M.host_ip = M.get_local_ip()
+  M.host_port = port
   return true, "Hosting on port " .. port
 end
 
@@ -76,6 +80,8 @@ function M.stop_host()
   M.is_host = false
   M.is_connected = false
   M.message_buffer = ""
+  M.host_ip = nil
+  M.host_port = nil
 end
 
 -- Connect to a host
@@ -127,6 +133,8 @@ function M.disconnect()
   M.is_connected = false
   M.is_host = false
   M.message_buffer = ""
+  M.host_ip = nil
+  M.host_port = nil
 
   if M.server then
     M.server:close()

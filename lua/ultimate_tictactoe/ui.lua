@@ -27,6 +27,7 @@ function M.setup_highlights()
   vim.api.nvim_set_hl(0, "UltimateTTTYourTurn", { fg = "#98c379", bold = true })
   vim.api.nvim_set_hl(0, "UltimateTTTOpponentTurn", { fg = "#5c6370" })
   vim.api.nvim_set_hl(0, "UltimateTTTTitle", { fg = "#c678dd", bold = true })
+  vim.api.nvim_set_hl(0, "UltimateTTTConnectionBox", { fg = "#e5c07b", bold = true })
 end
 
 -- Render a small board (3x3 grid)
@@ -98,7 +99,7 @@ function M.render(bufnr, game_state, network_state)
   table.insert(lines, title)
   table.insert(lines, "")
 
-  -- Multiplayer status
+  -- Multiplayer status and connection info
   if game_state.is_multiplayer then
     local network_info = "Mode: Multiplayer"
     if network_state.is_connected then
@@ -110,7 +111,31 @@ function M.render(bufnr, game_state, network_state)
       end
       network_info = network_info .. " | You are: " .. game_state.local_player
     else
-      network_info = network_info .. " | Disconnected"
+      if network_state.is_host and network_state.server then
+        -- Show waiting for connection with IP info
+        network_info = network_info .. " | Waiting for opponent..."
+        table.insert(lines, network_info)
+        table.insert(lines, "")
+        table.insert(lines, "╔══════════════════════════════════════════════════════════════╗")
+        table.insert(lines, "║                     SHARE WITH OPPONENT                     ║")
+        table.insert(lines, "╠══════════════════════════════════════════════════════════════╣")
+        local ip_info = network_state.host_ip or "IP not available"
+        local port_info = network_state.host_port or "9999"
+        table.insert(lines, string.format("║  IP: %-52s ║", ip_info))
+        table.insert(lines, string.format("║  Port: %-50s ║", port_info))
+        table.insert(lines, "╚══════════════════════════════════════════════════════════════╝")
+        table.insert(lines, "")
+        table.insert(lines, "Waiting for opponent to connect...")
+        table.insert(lines, "Press 'q' to cancel hosting")
+        
+        -- Set buffer as modifiable, update content, then set as unmodifiable
+        vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+        return  -- Don't render the game board while waiting
+      else
+        network_info = network_info .. " | Disconnected"
+      end
     end
     table.insert(lines, network_info)
   else
@@ -213,6 +238,10 @@ function M.apply_highlights(bufnr, game_state, network_state)
   for i, line in ipairs(lines) do
     if line:match("ULTIMATE TIC%-TAC%-TOE") then
       vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTTitle", i - 1, 0, -1)
+    elseif line:match("SHARE WITH OPPONENT") then
+      vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTConnectionBox", i - 1, 0, -1)
+    elseif line:match("IP:") or line:match("Port:") then
+      vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTConnectionBox", i - 1, 0, -1)
     end
   end
 
@@ -357,11 +386,12 @@ function M.show_connection_dialog(callback)
   end)
 end
 
--- Show host waiting dialog
+-- Show host waiting dialog (deprecated - now shown in buffer)
 -- @param ip string: local IP address
 -- @param port number: listening port
 function M.show_waiting_dialog(ip, port)
-  local msg = string.format("Waiting for opponent to connect...\n\nShare this with your opponent:\nIP: %s\nPort: %d", ip, port)
+  -- This function is deprecated - IP info is now shown in the game buffer
+  local msg = string.format("Hosting on %s:%d - waiting for opponent...", ip, port)
   vim.notify(msg, vim.log.levels.INFO)
 end
 
