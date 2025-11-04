@@ -101,15 +101,6 @@ function M.render(bufnr, game_state, network_state)
 
   -- Multiplayer status and connection info
   if game_state.is_multiplayer then
-    -- Debug: Add values to see what's happening
-    local debug_info = string.format("DEBUG: is_host=%s, server=%s, is_connected=%s, host_ip=%s, host_port=%s", 
-      tostring(network_state.is_host), 
-      tostring(network_state.server ~= nil), 
-      tostring(network_state.is_connected),
-      tostring(network_state.host_ip),
-      tostring(network_state.host_port))
-    table.insert(lines, debug_info)
-    
     -- Check if we're hosting and waiting for a connection (direct property check)
     if network_state.is_host and network_state.server and not network_state.is_connected then
       -- Show waiting for connection with compact IP info
