@@ -271,19 +271,29 @@ function M.apply_highlights(bufnr, game_state, network_state)
     local meta_row = game_state.active_board[1]
     local meta_col = game_state.active_board[2]
 
-    -- Calculate line range for active board
-    -- Board starts at line 10 (0-indexed: 9)
-    local start_line = 9 + meta_row * 4
-    local end_line = start_line + 2  -- Only 3 lines per small board (0, 1, 2)
+    -- Find the board start line dynamically
+    local board_start_line = nil
+    for i, line in ipairs(lines) do
+      if line:match("^%+%-%-%-%-%-%-%-%+") then -- Match "+-------+"
+        board_start_line = i  -- 0-indexed for highlighting
+        break
+      end
+    end
+    
+    if board_start_line then
+      -- Calculate line range for active board
+      local start_line = board_start_line + meta_row * 4
+      local end_line = start_line + 2  -- Only 3 lines per small board (0, 1, 2)
 
-    for line_idx = start_line, end_line do
-      if line_idx < #lines then
-        local line = lines[line_idx + 1]
-        -- Calculate column range for active board
-        local start_col = 2 + meta_col * 8
-        local end_col = start_col + 5
+      for line_idx = start_line, end_line do
+        if line_idx < #lines then
+          local line = lines[line_idx + 1]
+          -- Calculate column range for active board
+          local start_col = 2 + meta_col * 8
+          local end_col = start_col + 5
 
-        vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTActive", line_idx, start_col, end_col)
+          vim.api.nvim_buf_add_highlight(bufnr, -1, "UltimateTTTActive", line_idx, start_col, end_col)
+        end
       end
     end
   end
@@ -294,9 +304,21 @@ end
 -- @param col number: cursor column (0-indexed)
 -- @return table: {meta_row, meta_col, cell_row, cell_col} or nil
 function M.get_cell_from_cursor(line, col)
-  -- Board starts at line 10 (1-indexed)
-  -- Lines: 1-3=title, 4=empty, 5-7=status, 8=empty, 9=top border, 10=first board line
-  local board_start_line = 10
+  -- Find the board start line dynamically by looking for the top border
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  
+  local board_start_line = nil
+  for i, buffer_line in ipairs(lines) do
+    if buffer_line:match("^%+%-%-%-%-%-%-%-%+") then -- Match "+-------+"
+      board_start_line = i + 1  -- First board line is after the border
+      break
+    end
+  end
+  
+  if not board_start_line then
+    return nil
+  end
 
   -- Check if cursor is within board area (9 board lines + 2 separators = 11 lines)
   if line < board_start_line or line > board_start_line + 10 then
